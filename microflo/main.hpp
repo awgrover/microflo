@@ -30,9 +30,9 @@
 #include "stellaris_main.hpp"
 #endif
 
-#ifdef __ets__
-#include "esp_main.hpp"
-#endif
+//#ifdef __ets__
+//#include "esp_main.hpp"
+//#endif
 
 #endif // MICROFLO_MAIN_FILE
 

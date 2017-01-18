@@ -22,6 +22,7 @@ void loadFromProgMem(HostCommunication *controller) {
 }
 #endif
 
+/*
 extern "C"
 {
     void *__dso_handle = NULL;
@@ -29,6 +30,7 @@ extern "C"
         ;
     }
 }
+*/
 
 // I/O backend to use
 ArduinoIO io;

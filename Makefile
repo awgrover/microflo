@@ -65,7 +65,7 @@ ifeq ($(BOARD),arduino:avr:leonardo)
 	ARDUINO_RESET_CMD=python2 ./tools/leonardo-reset.py $(SERIALPORT); sleep 2;
 endif
 
-BUILDER_OPTIONS=-hardware $(ARDUINO)/hardware -tools $(ARDUINO)/tools-builder -tools $(ARDUINO)/hardware/tools -fqbn $(BOARD) -libraries ./ -build-path `pwd`/build/arduino/builder
+BUILDER_OPTIONS=-hardware $(ARDUINO)/hardware -tools $(ARDUINO)/tools-builder -tools $(ARDUINO)/hardware/tools -fqbn $(BOARD) -libraries ./ -tools /home/jon/.arduino15/packages -hardware /home/jon/.arduino15/packages
 
 COMMON_CFLAGS:=-I. -I${MICROFLO_SOURCE_DIR} -Wall -Wno-error=unused-variable
 
@@ -106,7 +106,7 @@ build-arduino:
 	touch $(BUILD_DIR)/arduino/lib/patched
 	$(MICROFLO) generate $(GRAPH) $(BUILD_DIR)/arduino/src/ arduino
 	mv $(BUILD_DIR)/arduino/src/main.cpp $(BUILD_DIR)/arduino/src/main.ino
-	arduino-builder -compile $(BUILDER_OPTIONS) $(BUILD_DIR)/arduino/src/main.ino
+	arduino-builder -compile $(BUILDER_OPTIONS) -build-path `pwd`/build/arduino/builder $(BUILD_DIR)/arduino/src/main.ino
 
 build-avr:
 	mkdir -p $(BUILD_DIR)/avr
@@ -178,17 +178,19 @@ build-linux-mqtt:
 build-esp:
 	rm -rf $(BUILD_DIR)/esp
 	mkdir -p $(BUILD_DIR)/esp
-	cp -r thirdparty/esp8266/esphttpd/include $(BUILD_DIR)/esp/
-	cp -r thirdparty/esp8266/ESP8266-EVB-blinkLED/* $(BUILD_DIR)/esp/
-	rm -rf $(BUILD_DIR)/esp/{firmware,build}
-	mkdir -p $(BUILD_DIR)/esp/{firmware,build}
-	rm $(BUILD_DIR)/esp/user/*.c || echo 'no C files'
-	rm $(BUILD_DIR)/esp/user/*.o || echo 'no .o files'
+	rm -rf $(BUILD_DIR)/esp/{firmware,builder,user}
+	mkdir -p $(BUILD_DIR)/esp/{firmware,builder,user}
 	$(MICROFLO) generate $(GRAPH) $(BUILD_DIR)/esp/user/ --target esp8266 --library microflo-core/components/esp-minimal.json
-	cd $(BUILD_DIR)/esp && make $(ESP_OPTS)
+	mv $(BUILD_DIR)/esp/user/main.cpp $(BUILD_DIR)/esp/user/main.ino
+	arduino-builder -compile $(BUILDER_OPTIONS) -build-path `pwd`/build/esp/builder $(BUILD_DIR)/esp/user/main.ino
 
-flash-esp: build-esp
-	cd $(BUILD_DIR)/esp && make flash $(ESP_OPTS)
+# /usr/share/arduino/arduino-builder -dump-prefs -logger=machine -hardware /usr/share/arduino/hardware -hardware /home/jon/.arduino15/packages -tools /usr/share/arduino/tools-builder -tools /home/jon/.arduino15/packages -built-in-libraries /usr/share/arduino/libraries -libraries /home/jon/Arduino/libraries -fqbn=esp8266:esp8266:nodemcuv2:CpuFrequency=80,UploadSpeed=115200,FlashSize=4M3M -ide-version=10800 -build-path /tmp/arduino_build_39698 -warnings=none -prefs=build.warn_data_percentage=75 -prefs=runtime.tools.mkspiffs.path=/home/jon/.arduino15/packages/esp8266/tools/mkspiffs/0.1.2 -prefs=runtime.tools.esptool.path=/home/jon/.arduino15/packages/esp8266/tools/esptool/0.4.9 -prefs=runtime.tools.xtensa-lx106-elf-gcc.path=/home/jon/.arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/1.20.0-26-gb404fb9-2 -verbose /home/jon/.arduino15/packages/esp8266/hardware/esp8266/2.3.0/libraries/esp8266/examples/Blink/Blink.ino
+
+ESPTOOL=/home/jon/.arduino15/packages/esp8266/tools/esptool/0.4.9/esptool
+
+# build-esp
+flash-esp:
+	$(ESPTOOL) -vv -cd nodemcu -cb 115200 -cp $(SERIALPORT) -ca 0x00000 -cf $(BUILD_DIR)/esp/builder/main.ino.bin main.ino.bin
 
 build: update-defs build-arduino build-avr
 
